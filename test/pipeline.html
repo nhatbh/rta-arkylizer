@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>RTA Arkylizer pipeline test</title>
+		<link rel="stylesheet" href="/extension/src/styles.css" />
+	</head>
+	<body>
+		<!-- stand-in for the game page's player card -->
+		<div id="userInfo">
+			<div class="inner">
+				<div class="user-info">
+					<div class="profile-img"><img src="https://static-pubcomm.onstove.com/event/live/epic7/guide/images/hero/c1192_s.png" alt="c1192" /></div>
+					<div class="info-wrap">
+						<div class="info-box">
+							<p class="serv"><span>Asia</span></p>
+							<p class="nickname">AvgE7Player <span class="bookmark"></span></p>
+							<p class="clan"><i></i> Gentlemans</p>
+						</div>
+						<div class="tier-box">
+							<span class="img-box"><em class="grade_champion" style="background-image:url('https://static-pubcomm.onstove.com/live/epic7/gg/images/common/grade/grade_champion.png')"></em></span>
+							<div class="tier">
+								<p class="season-name">Fall 2026</p>
+								<p class="tier-name">Champion</p>
+								<p class="score-rate"><em><i>2357</i></em> <em>Victory Points</em> / <em>Top</em><i>0.4</i> %</p>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			window.__errors = [];
+			window.addEventListener('error', function (e) { window.__errors.push((e.error && e.error.stack) || e.message); });
+			window.addEventListener('unhandledrejection', function (e) { window.__errors.push('rejection: ' + ((e.reason && e.reason.stack) || e.reason)); });
+			function load(src) {
+				return new Promise(function (res, rej) {
+					var s = document.createElement('script');
+					s.src = src;
+					s.onload = res;
+					s.onerror = function () { rej(new Error('failed to load ' + src)); };
+					document.head.appendChild(s);
+				});
+			}
+			history.pushState({}, '', '/en/gg/battlerecord/world_asia/277954154');
+
+			fetch('/battles_277954154.json')
+				.then(function (r) { return r.json(); })
+				.then(function (cache) {
+					var battles = cache.battles.slice(0, 120);
+					window.__STUB = { code: 0, value: { result_body: { total_count: cache.battles.length, battle_list: battles } } };
+					window.fetch = function () {
+						return Promise.resolve(new Response(JSON.stringify(window.__STUB), { status: 200, headers: { 'content-type': 'application/json' } }));
+					};
+					return load('/extension/vendor/chart.umd.js')
+						.then(function () { return load('/extension/src/inject.js'); })
+						.then(function () { return load('/extension/src/heroes.js'); })
+						.then(function () { return load('/extension/src/artifacts.js'); })
+						.then(function () { return load('/extension/src/i18n.js'); })
+						.then(function () { return load('/extension/src/aggregate.js'); })
+						.then(function () { return load('/extension/src/render.js'); })
+						.then(function () { return load('/extension/src/content.js'); })
+						.then(function () {
+							return window.fetch('https://e7api.onstove.com/gameApi/getBattleList?nick_no=277954154&world_code=world_asia&current_page=1&lang=en', { method: 'POST' }).then(function (r) { return r.json(); });
+						});
+				})
+				.catch(function (e) { window.__errors.push('pipeline: ' + (e && e.stack ? e.stack : e)); });
+		</script>
+	</body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>RTA Arkylizer extension harness</title>
+		<link rel="stylesheet" href="../src/styles.css" />
+		<style>
+			body {
+				margin: 0;
+				background: #101013;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app"></div>
+		<script src="../vendor/chart.umd.js"></script>
+		<script src="../src/heroes.js"></script>
+		<script src="../src/artifacts.js"></script>
+		<script src="../src/i18n.js"></script>
+		<script src="../src/aggregate.js"></script>
+		<script src="../src/render.js"></script>
+		<script>
+			window.__errors = [];
+			window.addEventListener('error', function (e) { window.__errors.push(String(e.message)); });
+			fetch('/battles_277954154.json')
+				.then(function (r) { return r.json(); })
+				.then(function (cache) {
+					try {
+						var data = window.E7Aggregate.build(cache.battles, { gapMinutes: 60 });
+						window.__built = data.views.map(function (v) {
+							return { key: v.key, battles: v.summary.battles, sessions: v.sessions.length, heroes: v.heroes.length, tags: v.tags.length, first: v.summary.firstScore, last: v.summary.lastScore };
+						});
+						window.E7Render.mount(document.getElementById('app'), { onClose: function () {} });
+						window.E7Render.update(data);
+						window.__ready = true;
+					} catch (e) {
+						window.__errors.push('build/mount: ' + (e && e.stack ? e.stack : e));
+					}
+				})
+				.catch(function (e) { window.__errors.push('fetch: ' + e); });
+		</script>
+	</body>
+</html>
