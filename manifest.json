@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "RTA Arkylizer",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Reads the Epic Seven match-history battle list straight from the page and renders a performance analysis: rank by match, points per match, sessions, warm-up, hero effectiveness and behaviour tags. English / Vietnamese.",
 	"host_permissions": ["https://epic7.onstove.com/*", "https://e7api.onstove.com/*"],
 	"permissions": ["storage", "unlimitedStorage"],

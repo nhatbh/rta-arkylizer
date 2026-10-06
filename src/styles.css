@@ -27,6 +27,11 @@ html.e7rta-lock { overflow: hidden !important; }
 .e7rta-overlay {
 	position: fixed; inset: 0; z-index: 2147483001; overflow: auto; padding: 20px;
 	background: rgba(6, 6, 9, .82);
+	animation: e7rta-backdrop-in .28s ease-out both;
+}
+@keyframes e7rta-backdrop-in {
+	from { opacity: 0; }
+	to { opacity: 1; }
 }
 
 /* ---------- base tokens (neutral defaults; the rank theme overrides the hue + accent) ---------- */
@@ -52,10 +57,13 @@ html.e7rta-lock { overflow: hidden !important; }
 	--e7rta-muted: oklch(0.735 calc(var(--e7rta-chroma) * 1.16) var(--e7rta-hue));
 	--e7rta-faint: oklch(0.635 calc(var(--e7rta-chroma) * 1.24) var(--e7rta-hue));
 
-	--e7rta-win: oklch(0.8 0.13 168);
-	--e7rta-win-soft: oklch(0.8 0.13 168 / 0.16);
-	--e7rta-loss: oklch(0.64 0.19 27);
-	--e7rta-loss-soft: oklch(0.64 0.19 27 / 0.16);
+	/* Fixed win/loss green + red, tuned for the dark, rank-tinted surfaces: a mint-leaning green and a
+	   coral-leaning red, both high-lightness and moderate-chroma so they read clearly without shouting
+	   over whatever rank colour the surfaces carry. */
+	--e7rta-win: oklch(0.83 0.12 158);
+	--e7rta-win-soft: oklch(0.83 0.12 158 / 0.16);
+	--e7rta-loss: oklch(0.73 0.14 22);
+	--e7rta-loss-soft: oklch(0.73 0.14 22 / 0.16);
 
 	--e7rta-fire: oklch(0.72 0.17 45);
 	--e7rta-ice: oklch(0.77 0.11 232);
@@ -78,7 +86,6 @@ html.e7rta-lock { overflow: hidden !important; }
 	box-shadow: 0 32px 90px rgba(0, 0, 0, .58), 0 1px 0 rgba(255, 255, 255, .03) inset;
 	overflow: hidden;
 	font: 14px/1.5 ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-	animation: e7rta-rise .34s cubic-bezier(.16, 1, .3, 1) both;
 	transition: background-color .4s ease-out, border-color .4s ease-out, color .4s ease-out;
 }
 /* the rank's metal, struck along the top edge of the card */
@@ -87,10 +94,19 @@ html.e7rta-lock { overflow: hidden !important; }
 	background: linear-gradient(90deg, transparent, color-mix(in oklch, var(--rk2) 62%, transparent) 20%, var(--rk1) 50%, color-mix(in oklch, var(--rk2) 62%, transparent) 80%, transparent);
 	opacity: .5;
 }
-@keyframes e7rta-rise {
-	from { opacity: 0; transform: translateY(8px); }
+/* Dashboard entrance: the card fades in and rises from the bottom of the screen, then every component
+   fades and rises in turn, top-most first. The stagger index (--i) is written by render.js on open.
+   The overlay is display:none while closed, so these animations replay from the start on every open. */
+@keyframes e7rta-dash-in {
+	from { opacity: 0; transform: translateY(22vh); }
 	to { opacity: 1; transform: none; }
 }
+.e7rta--enter { animation: e7rta-dash-in .46s cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes e7rta-comp-in {
+	from { opacity: 0; transform: translateY(14px); }
+	to { opacity: 1; transform: none; }
+}
+.e7rta-anim { animation: e7rta-comp-in .5s cubic-bezier(.16, 1, .3, 1) both; animation-delay: calc(60ms + var(--i, 0) * 50ms); }
 .e7rta *, .e7rta *::before, .e7rta *::after { box-sizing: border-box; }
 /* component display rules otherwise out-specify the UA `[hidden]` rule */
 .e7rta [hidden] { display: none !important; }
@@ -290,10 +306,14 @@ html.e7rta-lock { overflow: hidden !important; }
 .e7rta-tag--neutral { color: color-mix(in oklch, var(--e7rta-accent) 82%, white); border-color: color-mix(in oklch, var(--e7rta-accent) 40%, transparent); }
 .e7rta-tag--neutral:hover { background: var(--e7rta-accent-soft); border-color: color-mix(in oklch, var(--e7rta-accent) 62%, transparent); box-shadow: 0 0 14px var(--e7rta-accent-soft); }
 .e7rta-tag--neutral::before { box-shadow: 0 0 7px var(--e7rta-accent); }
+.e7rta-tag--hero { padding-left: 5px; }
+.e7rta-tag--hero::before { display: none; }
+.e7rta-tag-icon { width: 18px; height: 18px; border-radius: 5px; object-fit: cover; object-position: top; border: 1px solid var(--e7rta-line-soft); flex: none; }
+.e7rta-tag--hero .e7rta-icon-fb { width: 18px; height: 18px; border-radius: 5px; font-size: 8px; }
 
 /* ---------- recent form + knobs ---------- */
 .e7rta-formstrip { display: flex; flex-wrap: wrap; gap: 3px; margin: 8px 0 12px; }
-.e7rta-pip { width: 13px; height: 13px; border-radius: 4px; }
+.e7rta-pip { flex: 1 1 0; min-width: 8px; max-width: 64px; height: 6.5px; border-radius: 2px; }
 .e7rta-pip--win { background: var(--e7rta-win); }
 .e7rta-pip--loss { background: var(--e7rta-loss); }
 .e7rta-boxes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin-bottom: 14px; }
@@ -355,6 +375,7 @@ html.e7rta-lock { overflow: hidden !important; }
 .e7rta-canvaswrap--sm { height: 124px; }
 .e7rta-canvaswrap--sessions { height: 178px; }
 .e7rta-canvaswrap--journey { height: 200px; }
+.e7rta-canvaswrap--fp { height: 150px; }
 .e7rta-canvaswrap--tall { height: 270px; }
 
 /* ---------- chips ---------- */
@@ -363,11 +384,23 @@ html.e7rta-lock { overflow: hidden !important; }
 .e7rta-canvaswrap + .e7rta-chips { margin-top: 10px; }
 .e7rta-chip { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--e7rta-line-soft); font-size: 11.5px; color: var(--e7rta-muted); font-variant-numeric: tabular-nums; }
 .e7rta-chip b { color: var(--e7rta-ink); }
-.e7rta-chip--win { color: var(--e7rta-win); border-color: oklch(0.8 0.13 168 / .4); }
-.e7rta-chip--loss { color: var(--e7rta-loss); border-color: oklch(0.64 0.19 27 / .45); }
+.e7rta-chip--win { color: var(--e7rta-win); border-color: color-mix(in oklch, var(--e7rta-win) 40%, transparent); }
+.e7rta-chip--loss { color: var(--e7rta-loss); border-color: color-mix(in oklch, var(--e7rta-loss) 45%, transparent); }
 
 /* ---------- empty ---------- */
 .e7rta-empty { grid-column: 2; align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 48px 24px; text-align: center; color: var(--e7rta-ink); }
+
+/* ---------- loading ---------- */
+.e7rta-loading { grid-column: 1 / -1; align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; min-height: 68vh; padding: 64px 24px; text-align: center; color: var(--e7rta-ink); }
+.e7rta-loading #e7rta-loading-title { font-size: 16px; font-weight: 600; letter-spacing: .01em; }
+.e7rta-loader { position: relative; display: grid; place-items: center; width: 132px; height: 132px; }
+.e7rta-loader-glow { position: absolute; inset: -18%; border-radius: 50%; background: radial-gradient(circle, color-mix(in oklch, var(--e7rta-accent) 26%, transparent), transparent 70%); animation: e7rta-breathe 2.6s ease-in-out infinite; }
+.e7rta-loader-ring { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0 58%, color-mix(in oklch, var(--e7rta-accent) 92%, transparent) 88%, transparent 100%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px)); mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px)); filter: drop-shadow(0 0 9px color-mix(in oklch, var(--e7rta-accent) 55%, transparent)); animation: e7rta-spin 1.05s linear infinite; }
+.e7rta-loader-ring--2 { inset: 18px; opacity: .5; animation-duration: 1.6s; animation-direction: reverse; }
+.e7rta-loader-mark { width: 54px; height: 54px; border-radius: 14px; background-image: var(--e7rta-mark); background-position: center; background-repeat: no-repeat; background-size: contain; animation: e7rta-pulse 1.9s ease-in-out infinite; }
+@keyframes e7rta-spin { to { transform: rotate(360deg); } }
+@keyframes e7rta-pulse { 0%, 100% { transform: scale(.93); opacity: .82; } 50% { transform: scale(1.05); opacity: 1; } }
+@keyframes e7rta-breathe { 0%, 100% { opacity: .5; transform: scale(.92); } 50% { opacity: 1; transform: scale(1.06); } }
 
 /* ---------- tabs ---------- */
 .e7rta-tabs { border-top: 1px solid var(--e7rta-line); }
@@ -563,7 +596,7 @@ html.e7rta-lock { overflow: hidden !important; }
 .e7rta-tooltip[hidden] { display: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
-	.e7rta *, .e7rta-fab { transition-duration: .001ms !important; animation-duration: .001ms !important; }
+	.e7rta *, .e7rta-fab, .e7rta--enter, .e7rta-overlay { transition-duration: .001ms !important; animation-duration: .001ms !important; }
 }
 
 @media (max-width: 1180px) {

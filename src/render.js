@@ -12,7 +12,7 @@
 	var CHARTS = {};
 	var pending = [];
 	var raf = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (f) { return setTimeout(f, 16); };
-	var state = { data: null, profile: null, view: null, session: 0, tab: 'matches', heroOpen: null, matchOpen: null, matchShown: 60, sig: null, renderTimer: null };
+	var state = { data: null, profile: null, view: null, session: 0, tab: 'matches', heroOpen: null, matchOpen: null, matchShown: 60, sig: null, renderTimer: null, loading: false };
 	var COL = {}, EL = {}, RANK_COLORS = {};
 	/* every user-visible string goes through T(); the dictionary lives in i18n.js */
 	var T = function (k, p) { return E7I18n.t(k, p); };
@@ -91,9 +91,7 @@
 		Chart.defaults.borderColor = COL.lineSoft;
 		Chart.defaults.font.family = 'ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif';
 		Chart.defaults.font.size = 11;
-		/* Charts render without Chart.js's own tweening — 8 canvases animate at once and the entry
-		   motion is handled in CSS instead. */
-		Chart.defaults.animation = false;
+		/* Chart.js's own entrance tweening is left on (defaults). */
 		/* Chart.js's responsive mode attaches a ResizeObserver to the chart's container. If anything in
 		   that arrangement feeds size back into the container, the observer fires again on every
 		   observation and the chart redraws forever — a permanent frame loop that never idles. Charts
@@ -117,7 +115,7 @@
 	function flush() { var q = pending; pending = []; q.forEach(function (f) { try { f(); } catch (e) {} }); }
 	function scheduleFlush() { if (ROOT) void ROOT.offsetHeight; raf(flush); }
 	/* Charts are queued and created after layout so canvases have a real size (avoids a 0x0 first paint). */
-	function make(id, cfg, after) {
+	function make(id, cfg) {
 		if (CHARTS[id]) { try { CHARTS[id].destroy(); } catch (e) {} delete CHARTS[id]; }
 		pending.push(function () {
 			var cv = ROOT && ROOT.querySelector('#' + id);
@@ -126,7 +124,6 @@
 				var chart = new Chart(cv.getContext('2d'), cfg);
 				CHARTS[id] = chart;
 				sizeChart(chart);
-				if (after) after(chart);
 			} catch (e) {}
 		});
 		return true;
@@ -155,11 +152,14 @@
 	function renderBanner() {
 		var m = state.data.meta, p = state.profile || {};
 		var v = state.view;
-		var tierKey = E7Aggregate.rankKey(p.tier || m.latestGrade || '');
-		var tierName = p.tier || (m.latestGrade ? cap(m.latestGrade) : T('banner.unranked'));
+		// The page's player card lags a battle or two behind, so the rank is read from the newest match
+		// (meta.latestRank); the card is only the fallback when the latest match carries no usable grade.
+		var fromMatch = m.latestRank && m.latestRank !== 'unranked' ? m.latestRank : null;
+		var tierKey = fromMatch || E7Aggregate.rankKey(p.tier || '');
+		var tierName = fromMatch ? cap(fromMatch) : (p.tier || T('banner.unranked'));
 
 		var emblem = $('#e7rta-emblem');
-		emblem.src = p.emblem || E7Aggregate.emblemUrl(tierKey);
+		emblem.src = fromMatch ? E7Aggregate.emblemUrl(tierKey) : (p.emblem || E7Aggregate.emblemUrl(tierKey));
 		emblem.alt = tierName + ' emblem';
 
 		var avatar = $('#e7rta-avatar');
@@ -237,8 +237,11 @@
 		picked.forEach(function (t) {
 			var label = T('tag.' + t.key + '.label', t.params);
 			var detail = tagDetail(t);
-			var b = el('button', 'e7rta-tag e7rta-tag--' + t.tone, label);
+			var heroes = (t.params && t.params.heroes) || [];
+			var b = el('button', 'e7rta-tag e7rta-tag--' + t.tone + (heroes.length ? ' e7rta-tag--hero' : ''));
 			b.type = 'button';
+			heroes.forEach(function (h) { b.appendChild(icon(E7Aggregate.heroPortrait(h.code), h.name, 'e7rta-tag-icon')); });
+			b.appendChild(document.createTextNode(label));
 			b.setAttribute('aria-label', label + ': ' + detail);
 			bindTip(b, function () { return '<b>' + label + '</b><br>' + detail; });
 			host.appendChild(b);
@@ -380,6 +383,48 @@
 			}
 		});
 	}
+	/* View-level draft edge: win rate holding first pick vs second pick. Bar length is the number of
+	   games in that category (so the two rows scale against each other), split green/red by result;
+	   the win rate itself lives in the tooltip. */
+	function firstPickCfg(f) {
+		var rows = [
+			{ k: T('hero.firstPick'), w: f.me.wins, l: f.me.games - f.me.wins, n: f.me.games, rate: f.me.winRate },
+			{ k: T('hero.secondPick'), w: f.opp.wins, l: f.opp.games - f.opp.wins, n: f.opp.games, rate: f.opp.winRate }
+		];
+		return {
+			type: 'bar',
+			data: {
+				labels: rows.map(function (r) { return r.k; }),
+				datasets: [
+					{ label: T('sess.playedWin'), data: rows.map(function (r) { return r.w; }), backgroundColor: COL.win, stack: 's', borderRadius: 3, barPercentage: 0.36, categoryPercentage: 0.86 },
+					{ label: T('sess.playedLoss'), data: rows.map(function (r) { return r.l; }), backgroundColor: COL.loss, stack: 's', borderRadius: 3, barPercentage: 0.36, categoryPercentage: 0.86 }
+				]
+			},
+			options: {
+				indexAxis: 'y',
+				plugins: {
+					tooltip: {
+						filter: function (item) { return item.datasetIndex === 0; },
+						callbacks: {
+							title: function (c) { return rows[c[0].dataIndex].k; },
+							label: function (c) {
+								var r = rows[c.dataIndex];
+								return [T('hero.fpTip', { pct: r.rate, games: r.n }), T('hero.split', { w: r.w, l: r.l })];
+							}
+						}
+					}
+				},
+				scales: {
+					x: axis({ stacked: true, min: 0, ticks: { color: COL.faint, font: { size: 10 }, precision: 0 } }),
+					y: axis({ stacked: true, grid: { display: false } })
+				}
+			}
+		};
+	}
+	function renderFirstPick() {
+		make('e7rta-c-fp', firstPickCfg(state.view.firstPickAdvantage));
+	}
+
 	function rolling(records, win) {
 		var out = [];
 		for (var i = win - 1; i < records.length; i++) { var w = 0; for (var j = i - win + 1; j <= i; j++) if (records[j].win) w++; out.push({ i: i, v: (100 * w) / win }); }
@@ -474,7 +519,8 @@
 		Chart.register({
 			id: 'e7rtaPortraits',
 			afterDatasetsDraw: function (chart) {
-				var codes = chart.$e7Portraits;
+				var opts = (chart.options.plugins || {}).e7rtaPortraits;
+				var codes = opts && opts.codes;
 				if (!codes || !chart.chartArea) return;
 				var meta = chart.getDatasetMeta(0);
 				if (!meta || !meta.data) return;
@@ -951,8 +997,7 @@
 		registerPortraitPlugin();
 		preloadPortraits(heroes, function (cache) {
 			IMGS = cache;
-			var codes = heroes.map(function (h) { return h.code; });
-			make('e7rta-c-heroes', heroChartCfg(heroes), function (chart) { chart.$e7Portraits = codes; chart.update('none'); });
+			make('e7rta-c-heroes', heroChartCfg(heroes));
 			scheduleFlush();
 		});
 	}
@@ -1029,6 +1074,7 @@
 				indexAxis: 'y',
 				interaction: { mode: 'index', intersect: false },
 				plugins: {
+					e7rtaPortraits: { codes: cs.map(function (c) { return c.code; }) },
 					tooltip: {
 						/* one entry only: the two datasets are halves of the same bar, so printing the
 						   record per dataset shows the same lines twice */
@@ -1066,6 +1112,7 @@
 				layout: { padding: { bottom: 40 } },
 				interaction: { mode: 'index', intersect: false },
 				plugins: {
+					e7rtaPortraits: { codes: heroes.map(function (h) { return h.code; }) },
 					tooltip: {
 						/* one entry only: Wins and Losses are two halves of one bar, so printing the
 						   record once per dataset shows the exact same three lines twice */
@@ -1138,8 +1185,7 @@
 					preloadPortraits(open.companions, function (cache) {
 						/* merge rather than assign: the heroes chart at the top of this tab shares the cache */
 						for (var k in cache) IMGS[k] = cache[k];
-						var cc = open.companions.map(function (c) { return c.code; });
-						make('e7rta-c-hd-comp', hdCompCfg(open), function (chart) { chart.$e7Portraits = cc; chart.update('none'); });
+						make('e7rta-c-hd-comp', hdCompCfg(open));
 						scheduleFlush();
 					});
 				}
@@ -1220,8 +1266,7 @@
 		registerPortraitPlugin();
 		preloadPortraits(sel.heroes, function (cache) {
 			IMGS = cache;
-			var codes = sel.heroes.map(function (h) { return h.code; });
-			make('e7rta-c-sess-heroes', heroChartCfg(sel.heroes), function (chart) { chart.$e7Portraits = codes; chart.update('none'); });
+			make('e7rta-c-sess-heroes', heroChartCfg(sel.heroes));
 			scheduleFlush();
 		});
 	}
@@ -1300,21 +1345,28 @@
 	}
 
 	/* ---------- orchestration ---------- */
-	function setEmpty(on) {
+	/* Three overlay states: 'data' (the dashboard), 'loading' (spinner while the history streams in),
+	   and 'empty' (nothing captured for this player). */
+	function setState(mode) {
 		renderChrome();
-		var main = $('.e7rta-main'), tabs = $('.e7rta-tabs'), emp = $('#e7rta-empty');
-		if (main) main.hidden = on;
-		if (tabs) tabs.hidden = on;
-		if (emp) emp.hidden = !on;
-		if (on) {
+		var rail = $('.e7rta-rail'), main = $('.e7rta-main'), tabs = $('.e7rta-tabs'),
+			emp = $('#e7rta-empty'), load = $('#e7rta-loading');
+		var showData = mode === 'data';
+		if (main) main.hidden = !showData;
+		if (tabs) tabs.hidden = !showData;
+		if (emp) emp.hidden = mode !== 'empty';
+		if (load) load.hidden = mode !== 'loading';
+		if (rail) rail.hidden = mode === 'loading';   // the spinner takes the whole card
+		if (!showData) {
 			destroyCharts();
 			['#e7rta-summary', '#e7rta-tags', '#e7rta-formstrip', '#e7rta-recent-boxes', '#e7rta-knobs', '#e7rta-session-stats', '#e7rta-session-nav', '#e7rta-tabpanel'].forEach(function (s) { clear($(s)); });
 			renderBanner();
 		}
 	}
 	function render() {
-		if (!state.view) { setEmpty(true); return; }
-		setEmpty(false);
+		if (state.loading) { setState('loading'); return; }   // never reveal a half-streamed board
+		if (!state.view) { setState('empty'); return; }
+		setState('data');
 		renderBanner();
 		renderSummary();
 		renderTags();
@@ -1325,6 +1377,7 @@
 		renderTab();
 		renderRankPoints();
 		renderJourney();
+		renderFirstPick();
 		renderSessions();
 		scheduleFlush();
 	}
@@ -1349,9 +1402,11 @@
 					'<div class="e7rta-col">' +
 						'<section class="e7rta-card"><h3 class="e7rta-cardtitle"><span id="e7rta-t-rankpts"></span><em id="e7rta-rankpoints-sub"></em></h3><div class="e7rta-canvaswrap e7rta-canvaswrap--sm"><canvas id="e7rta-c-rankpts"></canvas></div></section>' +
 						'<section class="e7rta-card"><h3 class="e7rta-cardtitle" id="e7rta-t-journey"></h3><div class="e7rta-canvaswrap e7rta-canvaswrap--journey"><canvas id="e7rta-c-journey"></canvas></div></section>' +
+						'<section class="e7rta-card"><h3 class="e7rta-cardtitle" id="e7rta-t-fp"></h3><div class="e7rta-canvaswrap e7rta-canvaswrap--fp"><canvas id="e7rta-c-fp"></canvas></div></section>' +
 					'</div>' +
 				'</main>' +
 				'<div class="e7rta-empty" id="e7rta-empty" hidden><p id="e7rta-empty-title"></p><p class="e7rta-sub" id="e7rta-empty-hint"></p></div>' +
+				'<div class="e7rta-loading" id="e7rta-loading" hidden><div class="e7rta-loader" aria-hidden="true"><span class="e7rta-loader-glow"></span><span class="e7rta-loader-ring"></span><span class="e7rta-loader-ring e7rta-loader-ring--2"></span><span class="e7rta-loader-mark"></span></div><p id="e7rta-loading-title"></p><p class="e7rta-sub" id="e7rta-loading-hint"></p></div>' +
 			'</div>' +
 			'<section class="e7rta-tabs"><div class="e7rta-tablist" role="tablist" id="e7rta-tablist"></div><div class="e7rta-tabpanel" id="e7rta-panel" role="tabpanel"></div></section>' +
 			'<div class="e7rta-tooltip" id="e7rta-tooltip" hidden></div>';
@@ -1374,9 +1429,14 @@
 		$('#e7rta-t-sessions').textContent = T('card.sessions');
 		$('#e7rta-t-rankpts').textContent = T('card.rankPoints');
 		$('#e7rta-t-journey').textContent = T('card.journey');
+		$('#e7rta-t-fp').textContent = T('hero.firstVsSecond');
 		$('#e7rta-sessions-hint').textContent = T('sub.sessionsHint');
 		$('#e7rta-empty-title').textContent = T('empty.title');
 		$('#e7rta-empty-hint').textContent = T('empty.hint');
+		var loadTitle = $('#e7rta-loading-title'), loadHint = $('#e7rta-loading-hint');
+		var soFar = state.data && state.data.meta.battleCount;
+		if (loadTitle) loadTitle.textContent = T('load.title');
+		if (loadHint) loadHint.textContent = soFar ? T('load.count', { n: soFar }) : T('load.hint');
 		var close = $('#e7rta-close');
 		if (close) close.setAttribute('aria-label', T('close.label'));
 		var season = $('#e7rta-season');
@@ -1398,13 +1458,17 @@
 		});
 	}
 
-	function update(data, profile) {
+	function update(data, profile, loading) {
+		state.loading = !!loading;
 		var prev = state.data && state.data.meta;
 		/* A rebuild destroys and recreates every chart, so do nothing at all unless something that
-		   actually affects the view moved. The host page's card churns constantly. */
+		   actually affects the view moved. The host page's card churns constantly. Only the *display
+		   mode* is part of the signature, so a loading→empty hand-off repaints while a sync starting
+		   mid-view does not. */
 		var p = profile || state.profile || {};
+		var mode = state.loading ? 'loading' : (data.views.length ? 'data' : 'empty');
 		var sig = [data.meta.battleCount, data.meta.world, data.meta.nick, data.meta.latestGrade,
-			p.name, p.tier, p.score, p.emblem, p.avatar].join('|');
+			p.name, p.tier, p.score, p.emblem, p.avatar, mode].join('|');
 		if (sig === state.sig) return;
 		state.sig = sig;
 
@@ -1450,8 +1514,28 @@
 	/* switching language re-renders everything that carries text, including the launcher (content.js) */
 	E7I18n.onChange(function () {
 		renderLang();
-		if (state.view) render(); else setEmpty(true);
+		if (state.data) render(); else setState(state.loading ? 'loading' : 'empty');
 	});
 
-	window.E7Render = { mount: mount, update: update, hideTip: hideTip };
+	/* Dashboard entrance: order the components by their on-screen top, hand each a stagger index, and
+	   let the CSS animations run — they replay on every open, since the overlay is display:none while
+	   closed. Called by content.js when the launcher opens the dashboard. */
+	function playEntrance() {
+		if (!ROOT) return;
+		var nodes = Array.prototype.slice.call(
+			ROOT.querySelectorAll('.e7rta-top, .e7rta-banner, .e7rta-card, .e7rta-tabs, .e7rta-empty')
+		).filter(function (el) { return el.offsetParent !== null; });
+		ROOT.classList.remove('e7rta--enter');
+		void ROOT.offsetWidth;
+		nodes.sort(function (a, b) { return a.getBoundingClientRect().top - b.getBoundingClientRect().top; });
+		nodes.forEach(function (el, i) {
+			el.style.setProperty('--i', i);
+			el.classList.remove('e7rta-anim');
+		});
+		void ROOT.offsetWidth;
+		ROOT.classList.add('e7rta--enter');
+		nodes.forEach(function (el) { el.classList.add('e7rta-anim'); });
+	}
+
+	window.E7Render = { mount: mount, update: update, hideTip: hideTip, enter: playEntrance };
 })();

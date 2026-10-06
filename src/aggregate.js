@@ -307,15 +307,21 @@
 	}
 
 	function computePlaystyle(records) {
-		// lineup churn (duo-based): a fresh lineup carries over at most ONE hero from the previous match
-		var pairs = 0, fresh = 0;
+		// lineup churn: a repeat is a lineup sharing >=3 heroes with ANY of the 3 matches before it
+		var LOOKBACK = 3, SHARED = 3;
+		var evaluated = 0, fresh = 0;
 		for (var i = 1; i < records.length; i++) {
-			var prev = {};
-			records[i - 1].playedCodes.forEach(function (c) { prev[c] = 1; });
-			var overlap = 0;
-			records[i].playedCodes.forEach(function (c) { if (prev[c]) overlap++; });
-			pairs++;
-			if (overlap < 2) fresh++;
+			var cur = records[i].playedCodes;
+			var repeat = false;
+			for (var k = Math.max(0, i - LOOKBACK); k < i && !repeat; k++) {
+				var prev = {};
+				records[k].playedCodes.forEach(function (c) { prev[c] = 1; });
+				var overlap = 0;
+				cur.forEach(function (c) { if (prev[c]) overlap++; });
+				if (overlap >= SHARED) repeat = true;
+			}
+			evaluated++;
+			if (!repeat) fresh++;
 		}
 		// match length: 15 turns is the midpoint, and the curve flattens at the tails so a 60-turn
 		// slog is not scored proportionally worse than a 30-turn one.
@@ -327,7 +333,7 @@
 		var withInit = records.filter(function (r) { return r.initiative !== null; });
 		var held = withInit.filter(function (r) { return r.initiative; }).length;
 		return {
-			flex: { value: pct(fresh, pairs), n: pairs, fresh: fresh },
+			flex: { value: pct(fresh, evaluated), n: evaluated, fresh: fresh },
 			tempo: {
 				value: round(tempoScore, 1), n: withTurns.length, midpoint: TURN_MID,
 				avgTurns: withTurns.length ? round(sum(withTurns.map(function (r) { return r.turns; })) / withTurns.length, 1) : null
@@ -472,12 +478,12 @@
 		var q = heroes.filter(function (h) { return h.games >= 8; });
 		if (q.length) {
 			var best = q.slice().sort(function (a, b) { return b.winRate - a.winRate; })[0];
-			if (best.winRate >= W + 8) add('SIGNATURE', 'heroes', 'good', (best.winRate - W - 8) / 20, { hero: best.name, pct: best.winRate, games: best.games, diff: round(best.winRate - W, 1) });
+			if (best.winRate >= W + 8) add('SIGNATURE', 'heroes', 'good', (best.winRate - W - 8) / 20, { hero: best.name, pct: best.winRate, games: best.games, diff: round(best.winRate - W, 1), heroes: [{ code: best.code, name: best.name }] });
 			var worst = q.slice().sort(function (a, b) { return a.winRate - b.winRate; })[0];
-			if (worst.winRate <= W - 8 && worst.code !== best.code) add('BAIT PICK', 'heroes', 'bad', (W - 8 - worst.winRate) / 20, { hero: worst.name, pct: worst.winRate, games: worst.games, diff: round(W - worst.winRate, 1) });
+			if (worst.winRate <= W - 8 && worst.code !== best.code) add('BAIT PICK', 'heroes', 'bad', (W - 8 - worst.winRate) / 20, { hero: worst.name, pct: worst.winRate, games: worst.games, diff: round(W - worst.winRate, 1), heroes: [{ code: worst.code, name: worst.name }] });
 		}
 		var mvpQ = heroes.filter(function (h) { return h.games >= 10; }).sort(function (a, b) { return b.mvpRate - a.mvpRate; });
-		if (mvpQ.length && mvpQ[0].mvpRate >= 25) add('CARRY', 'heroes', 'good', (mvpQ[0].mvpRate - 25) / 40, { hero: mvpQ[0].name, pct: mvpQ[0].mvpRate, games: mvpQ[0].games });
+		if (mvpQ.length && mvpQ[0].mvpRate >= 25) add('CARRY', 'heroes', 'good', (mvpQ[0].mvpRate - 25) / 40, { hero: mvpQ[0].name, pct: mvpQ[0].mvpRate, games: mvpQ[0].games, heroes: [{ code: mvpQ[0].code, name: mvpQ[0].name }] });
 
 		var bestPair = null;
 		Object.keys(pairs).forEach(function (k) {
@@ -487,7 +493,7 @@
 		});
 		if (bestPair) {
 			var pr = pct(bestPair.wins, bestPair.games);
-			if (pr >= W + 12) add('SYNERGY', 'heroes', 'good', (pr - W - 12) / 25, { a: heroOf(bestPair.a).name, b: heroOf(bestPair.b).name, pct: pr, games: bestPair.games });
+			if (pr >= W + 12) add('SYNERGY', 'heroes', 'good', (pr - W - 12) / 25, { a: heroOf(bestPair.a).name, b: heroOf(bestPair.b).name, pct: pr, games: bestPair.games, heroes: [{ code: bestPair.a, name: heroOf(bestPair.a).name }, { code: bestPair.b, name: heroOf(bestPair.b).name }] });
 		}
 
 		var bestEl = null, worstEl = null;
@@ -507,7 +513,7 @@
 		records.forEach(function (b) { if (b.fpCode) fpCount[b.fpCode] = (fpCount[b.fpCode] || 0) + 1; });
 		var topFp = null;
 		Object.keys(fpCount).forEach(function (k) { if (!topFp || fpCount[k] > fpCount[topFp]) topFp = k; });
-		if (topFp && fpCount[topFp] >= 6) add('OPENING PICK', 'heroes', 'neutral', 0.3, { hero: heroOf(topFp).name, games: fpCount[topFp] });
+		if (topFp && fpCount[topFp] >= 6) add('OPENING PICK', 'heroes', 'neutral', 0.3, { hero: heroOf(topFp).name, games: fpCount[topFp], heroes: [{ code: topFp, name: heroOf(topFp).name }] });
 
 		var order = { good: 0, neutral: 1, bad: 2 };
 		return tags.sort(function (a, b) { return (order[a.tone] - order[b.tone]) || (b.impact - a.impact); });

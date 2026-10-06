@@ -209,6 +209,11 @@ window.E7I18n = (function () {
 			'empty.title': 'No ranked battles captured for this player yet.',
 			'empty.hint': 'Give the match history a moment to load, or open a different player.',
 
+			/* loading state */
+			'load.title': 'Loading match history…',
+			'load.hint': 'Reading the battles captured so far — this only takes a moment.',
+			'load.count': '{n} battles loaded so far',
+
 			/* analysis tags — ids mirror the rule registry in aggregate.js.
 			   Rules flagged `wry` carry a separate `detailDry` line used when the signal is weak. */
 			'tag.FLEX.label': 'FLEX',
@@ -470,6 +475,11 @@ window.E7I18n = (function () {
 			/* empty state */
 			'empty.title': 'Chưa ghi nhận trận xếp hạng nào của người chơi này.',
 			'empty.hint': 'Đợi lịch sử đấu tải xong, hoặc mở một người chơi khác.',
+
+			/* loading state */
+			'load.title': 'Đang tải lịch sử đấu…',
+			'load.hint': 'Đang đọc các trận đã ghi nhận — sẽ xong ngay thôi.',
+			'load.count': 'Đã tải {n} trận',
 
 			/* analysis tags — ids mirror the rule registry in aggregate.js */
 			'tag.FLEX.label': 'Xoay bài',

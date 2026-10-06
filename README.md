@@ -9,9 +9,9 @@ hero effectiveness, behaviour tags and a full match browser. The interface ships
 
 ## ⬇️ Download
 
-### **[Download RTA Arkylizer v1.0.0 →](https://github.com/nhatbh/rta-arkylizer/raw/release/dist/rta-arkylizer-1.0.0.zip)**
+### **[Download RTA Arkylizer v1.0.1 →](https://github.com/nhatbh/rta-arkylizer/raw/release/dist/rta-arkylizer-1.0.1.zip)**
 
-That link downloads the ready-to-install extension (`.zip`, ~166 KB). No build tools, no Node.js,
+That link downloads the ready-to-install extension (`.zip`, ~169 KB). No build tools, no Node.js,
 nothing to compile.
 
 ---
