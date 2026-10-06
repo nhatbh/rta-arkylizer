@@ -53,6 +53,7 @@
 	 */
 	var B_PREFIX = 'b:', P_PREFIX = 'p:';
 	var loaded = {};       // playerKey -> hydrated from disk
+	var cached = {};       // playerKey -> has a stored record, so the loading screen can be skipped
 	var loading = {};      // playerKey -> callbacks waiting on an in-flight hydrate
 	var indexQueue = [];   // pending index merges
 	var indexBusy = false;
@@ -128,6 +129,7 @@
 		chrome.storage.local.get(P_PREFIX + key, function (res) {
 			var seqs = (later() || !res) ? [] : (res[P_PREFIX + key] || []);
 			if (!seqs.length) { finish(); return; }
+			cached[key] = true;
 			chrome.storage.local.get(seqs.map(function (s) { return B_PREFIX + s; }), function (have) {
 				if (!later() && have) {
 					var bucket = bucketOf(key);
@@ -148,9 +150,10 @@
 		if (!d || d.__e7rta !== true || d.type === 'ready') return;
 		if (d.type === 'battles') ingest(d.payload);
 		else if (d.type === 'navigate') syncRoute();
-		else if (d.type === 'syncStart') { syncing = true; paintFab(); }
-		else if (d.type === 'syncDone' || d.type === 'syncError') { syncing = false; paintFab(); }
+		else if (d.type === 'syncStart') { syncing = true; paintFab(); ifOverlay(refresh); }
+		else if (d.type === 'syncDone' || d.type === 'syncError') { syncing = false; paintFab(); ifOverlay(refresh); }
 	});
+	function ifOverlay(fn) { if (overlay && !overlay.hidden) fn(); }
 
 	function ingest(payload) {
 		var list = (payload && payload.battles) || [];
@@ -268,6 +271,7 @@
 		if (info) { currentKey = info.key; if (lastPath === undefined) lastPath = info.key; }
 		attachProfileObserver();
 		refresh();
+		if (window.E7Render.enter) window.E7Render.enter();
 	}
 	function close() {
 		if (overlay) overlay.hidden = true;
@@ -296,11 +300,12 @@
 		var paint = function () {
 			if (key !== currentKey || !mounted) return;   // the route moved while we were reading
 			paintFab();
-			window.E7Render.update(window.E7Aggregate.build(rawFor(key), { gapMinutes: 60 }), readProfile());
+			// the spinner holds until the sync lands — unless this player already has a stored record
+			window.E7Render.update(window.E7Aggregate.build(rawFor(key), { gapMinutes: 60 }), readProfile(), syncing && !cached[key]);
 		};
 		if (loaded[key] || !hasStorage()) { paint(); return; }
-		// show anything already streamed in this session, then repaint once the disk cache lands
-		if (countFor(key)) paint();
+		// paint straight away (a loading spinner, or whatever has streamed in), then again once the cache lands
+		paint();
 		hydrate(key, paint);
 	}
 
