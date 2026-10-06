@@ -2,8 +2,7 @@
 
 An unofficial, fan-made browser extension for **Epic Seven**. It reads the World Arena (RTA) battle
 record page you are already on and draws a performance dashboard over it: rank journey, sessions,
-hero effectiveness, behaviour tags and a full match browser. The interface ships in **English** and
-**Tiếng Việt**.
+hero effectiveness, behaviour tags and a full match browser.
 
 ---
 
@@ -19,7 +18,7 @@ Click the link above to download the file.
 
 ## Cài đặt
 
-Tiện ích chưa có trên Chrome Web Store, nên bạn cài trực tiếp từ file vừa tải. Chỉ mất khoảng một phút.
+Do tiện ích chưa có trên Chrome Extension Store (vì tác giả là con đỗ nghèo khỉ). Anh em cứ tải xuống rồi cài nha.
 
 1. **Giải nén** file vừa tải vào một thư mục bạn giữ lâu dài — ví dụ `Documents\rta-arkylizer`.
    Đừng xoá thư mục này về sau, vì trình duyệt sẽ đọc tiện ích trực tiếp từ đó.
@@ -34,7 +33,7 @@ Tiện ích chưa có trên Chrome Web Store, nên bạn cài trực tiếp từ
 
 ## Cách dùng
 
-1. Vào `epic7.onstove.com`, mở **Đấu trường Thế giới** và vào trang **lịch sử đấu**.
+1. Vào trang lịch sử đấu ở [đây](https://epic7.onstove.com/en/gg) và vào profile mà bạn muốn xem.
 2. Bấm nút **Phân tích** ở góc dưới bên phải màn hình.
 3. Muốn đổi ngôn ngữ, bấm nút **EN / VI** ở đầu bảng phân tích.
 
@@ -69,9 +68,8 @@ downloaded. It takes about a minute.
 
 ## Using it
 
-1. Go to `epic7.onstove.com`, open **World Arena** and go to your **battle record** page.
+1. Go to the Match History page [here](https://epic7.onstove.com/en/gg) and navigate to the Profile you want to analyze.
 2. Click the **Analyze** button in the bottom-right corner.
-3. To switch language, click the **EN / VI** button at the top of the dashboard.
 
 ## Good to know
 
