@@ -27,14 +27,10 @@ Takes about a minute.
 | --- | --- |
 | 1 | **Download** the zip using the link above. |
 | 2 | **Unzip it** into a folder you will keep — for example `Documents\rta-arkylizer`. Do not delete this folder later: the browser loads the extension directly from it. |
-| 3 | Open your browser's **extension page** — use the shortcuts just below the table. |
+| 3 | Open your browser's extensions page: `chrome://extensions` for Chrome, Brave and Opera — or `edge://extensions` for Edge. |
 | 4 | Turn on **Developer mode**: the toggle in the top-right corner in Chrome, or in the left sidebar in Edge. |
 | 5 | Click **Load unpacked** and select the folder from step 2. It is the folder that contains `manifest.json`. |
 | 6 | Optional: click the puzzle-piece icon in the toolbar and pin *RTA Arkylizer* so its button is always visible. |
-
-**Open your extension page:** **[Chrome / Brave / Opera ↗](chrome://extensions)** &nbsp;·&nbsp; **[Microsoft Edge ↗](edge://extensions)**
-
-> Browsers refuse to follow web links into their own internal pages, so if those buttons do nothing, paste <kbd>chrome://extensions</kbd> (Chrome, Brave, Opera) or <kbd>edge://extensions</kbd> (Edge) into the address bar.
 
 ### Using it
 
@@ -66,14 +62,10 @@ Chỉ mất khoảng một phút.
 | --- | --- |
 | 1 | **Tải file zip** bằng liên kết ở trên. |
 | 2 | **Giải nén** vào một thư mục bạn giữ lâu dài — ví dụ `Documents\rta-arkylizer`. Đừng xoá thư mục này về sau: trình duyệt nạp tiện ích trực tiếp từ đó. |
-| 3 | Mở **trang quản lý tiện ích** của trình duyệt — dùng nút ngay bên dưới bảng. |
+| 3 | Mở trang quản lý tiện ích của trình duyệt: `chrome://extensions` với Chrome, Brave, Opera — hoặc `edge://extensions` với Edge. |
 | 4 | Bật **Chế độ dành cho nhà phát triển** (Developer mode): công tắc ở góc trên bên phải với Chrome, hoặc thanh bên trái với Edge. |
 | 5 | Bấm **Tải tiện ích chưa được đóng gói** (Load unpacked) và chọn thư mục ở bước 2 — thư mục có chứa file `manifest.json`. |
 | 6 | Không bắt buộc: bấm biểu tượng mảnh ghép trên thanh công cụ rồi ghim *RTA Arkylizer* để nút luôn hiển thị. |
-
-**Mở trang quản lý tiện ích:** **[Chrome / Brave / Opera ↗](chrome://extensions)** &nbsp;·&nbsp; **[Microsoft Edge ↗](edge://extensions)**
-
-> Trình duyệt chặn liên kết web mở vào trang nội bộ của nó, nên nếu bấm mà không thấy gì, hãy dán <kbd>chrome://extensions</kbd> (Chrome, Brave, Opera) hoặc <kbd>edge://extensions</kbd> (Edge) vào thanh địa chỉ.
 
 ### Cách dùng
 
